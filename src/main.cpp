@@ -124,6 +124,10 @@ int main()
                                           << 2 + 4 * lane << ", "
                                           << 4 * lane - 2 << "\n";
                                 too_close = true;
+                                if (lane > 0)
+                                {
+                                    lane = 0;
+                                }
                             }
                         }
                     }
