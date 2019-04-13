@@ -14,7 +14,7 @@ using std::string;
 using std::vector;
 
 int lane = 1;
-double ref_vel = 49.5;
+double ref_vel = 0;
 
 int main()
 {
@@ -104,10 +104,11 @@ int main()
                         car_s = end_path_s;
                     }
                     bool too_close = false;
+                    // std::cout << sensor_fusion << "\n";
                     for (int i = 0; i < sensor_fusion.size(); ++i)
                     {
                         float d = sensor_fusion[i][6];
-                        if ((d < 2 + 4 * lane) && (d > 4 * lane - 2))
+                        if ((d < (4 * (lane + 1))) && (d > (4 * lane)))
                         {
                             double vx = sensor_fusion[i][3];
                             double vy = sensor_fusion[i][4];
@@ -117,9 +118,24 @@ int main()
                             if ((check_car_s > car_s) && (check_car_s - car_s) < 30)
                             {
                                 // todo: do not crash
-                                ref_vel = 29.5;
+                                // ref_vel = 29.5;
+                                std::cout << "d:" << d << ", "
+                                          << check_car_s << ", "
+                                          << 2 + 4 * lane << ", "
+                                          << 4 * lane - 2 << "\n";
+                                too_close = true;
                             }
                         }
+                    }
+
+                    if (too_close)
+                    {
+                        ref_vel -= .224;
+                        std::cout << ref_vel << std::endl;
+                    }
+                    else if (ref_vel < 49.5)
+                    {
+                        ref_vel += .224;
                     }
 
                     vector<double> ptsx;
