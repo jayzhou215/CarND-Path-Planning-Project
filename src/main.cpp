@@ -2,6 +2,7 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "helpers.h"
 #include "json.hpp"
+#include "road.h"
 #include "spline.h"
 #include <fstream>
 #include <iostream>
@@ -54,7 +55,6 @@ int main()
         map_waypoints_dx.push_back(d_x);
         map_waypoints_dy.push_back(d_y);
     }
-
     h.onMessage([&map_waypoints_x, &map_waypoints_y, &map_waypoints_s,
                  &map_waypoints_dx, &map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                                                        uWS::OpCode opCode) {
@@ -104,41 +104,30 @@ int main()
                         car_s = end_path_s;
                     }
                     bool too_close = false;
+                    float lane_distance = getLaneDistance(sensor_fusion, car_s, lane, prev_size);
                     // std::cout << sensor_fusion << "\n";
-                    for (int i = 0; i < sensor_fusion.size(); ++i)
+                    if (lane_distance > 0 and lane_distance < 30)
                     {
-                        float d = sensor_fusion[i][6];
-                        if ((d < (4 * (lane + 1))) && (d > (4 * lane)))
-                        {
-                            double vx = sensor_fusion[i][3];
-                            double vy = sensor_fusion[i][4];
-                            double check_speed = sqrt(vx * vx + vy * vy);
-                            double check_car_s = sensor_fusion[i][5];
-                            check_car_s += ((double)prev_size) * .02 * check_speed;
-                            if ((check_car_s > car_s) && (check_car_s - car_s) < 30)
-                            {
-                                // todo: do not crash
-                                // ref_vel = 29.5;
-                                std::cout << "d:" << d << ", "
-                                          << check_car_s << ", "
-                                          << 2 + 4 * lane << ", "
-                                          << 4 * lane - 2 << "\n";
-                                too_close = true;
-                                if (lane > 0)
-                                {
-                                    lane = 0;
-                                }
-                            }
-                        }
+                        too_close = true;
                     }
+
+                    lane = getBestLane(sensor_fusion, car_s, lane, prev_size);
 
                     if (too_close)
                     {
+                        if (lane_distance < 5)
+                        {
+                            ref_vel -= .224;
+                        }
                         ref_vel -= .224;
                         std::cout << ref_vel << std::endl;
                     }
                     else if (ref_vel < 49.5)
                     {
+                        if (lane_distance < 0 || lane_distance > 50)
+                        {
+                            ref_vel += .224;
+                        }
                         ref_vel += .224;
                     }
 
@@ -232,20 +221,6 @@ int main()
                         next_x_vals.push_back(x_point);
                         next_y_vals.push_back(y_point);
                     }
-
-                    /**
-                     * TODO: define a path made up of (x,y) points that the car will visit
-                     *   sequentially every .02 seconds
-                     */
-                    // double dist_inc = 0.5;
-                    // for (int i = 0; i < 50; ++i)
-                    // {
-                    //     double next_s = car_s + (i + i) * dist_inc;
-                    //     double next_d = 6;
-                    //     vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-                    //     next_x_vals.push_back(xy[0]);
-                    //     next_y_vals.push_back(xy[1]);
-                    // }
 
                     msgJson["next_x"] = next_x_vals;
                     msgJson["next_y"] = next_y_vals;
